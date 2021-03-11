@@ -91,7 +91,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * The producer is <i>thread safe</i> and sharing a single producer instance across threads will generally be faster than
  * having multiple instances.
  * <p>
- * Here is a simple example of using the producer to send records with strings containing sequential numbers as the key/value
+     * Here is a simple example of using the producer to send records with strings containing sequential numbers as the key/value
  * pairs.
  * <pre>
  * {@code
