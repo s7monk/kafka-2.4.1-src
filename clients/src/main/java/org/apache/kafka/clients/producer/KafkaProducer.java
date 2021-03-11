@@ -314,6 +314,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 Time.SYSTEM);
     }
 
+    //kafka producer初始化过程
     // visible for testing
     @SuppressWarnings("unchecked")
     KafkaProducer(Map<String, Object> configs,
@@ -343,6 +344,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             log = logContext.logger(KafkaProducer.class);
             log.trace("Starting the Kafka producer");
 
+            // metric 与监控相关的一些指标，研究kafka生产者核心流程可以不必关注 metric相关配置
             Map<String, String> metricTags = Collections.singletonMap("client-id", clientId);
             MetricConfig metricConfig = new MetricConfig().samples(config.getInt(ProducerConfig.METRICS_NUM_SAMPLES_CONFIG))
                     .timeWindow(config.getLong(ProducerConfig.METRICS_SAMPLE_WINDOW_MS_CONFIG), TimeUnit.MILLISECONDS)
@@ -351,10 +353,14 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             List<MetricsReporter> reporters = config.getConfiguredInstances(ProducerConfig.METRIC_REPORTER_CLASSES_CONFIG,
                     MetricsReporter.class,
                     Collections.singletonMap(ProducerConfig.CLIENT_ID_CONFIG, clientId));
+
             reporters.add(new JmxReporter(JMX_PREFIX));
             this.metrics = new Metrics(metricConfig, reporters, time);
+            // 设置分区器
             this.partitioner = config.getConfiguredInstance(ProducerConfig.PARTITIONER_CLASS_CONFIG, Partitioner.class);
+            // 生产者发送消息时重试的时间间隔，生产者客户端对应的配置为retry.backoff.ms，该参数默认为100ms
             long retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG);
+            //设置key和value的序列化器
             if (keySerializer == null) {
                 this.keySerializer = config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
                                                                                          Serializer.class);
@@ -375,6 +381,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             // load interceptors and make sure they get clientId
             userProvidedConfigs.put(ProducerConfig.CLIENT_ID_CONFIG, clientId);
             ProducerConfig configWithClientId = new ProducerConfig(userProvidedConfigs, false);
+            // 设置拦截器
             List<ProducerInterceptor<K, V>> interceptorList = (List) configWithClientId.getConfiguredInstances(
                     ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, ProducerInterceptor.class);
             if (interceptors != null)
@@ -383,10 +390,14 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
                 this.interceptors = new ProducerInterceptors<>(interceptorList);
             ClusterResourceListeners clusterResourceListeners = configureClusterResourceListeners(keySerializer,
                     valueSerializer, interceptorList, reporters);
+            // 生产者允许发送消息最大的大小,对应参数为max.request.size，该参数默认为1M,生产环境一般需要修改该参数，比如改为10M，否则大于1M的消息不能向kafka服务端发送
             this.maxRequestSize = config.getInt(ProducerConfig.MAX_REQUEST_SIZE_CONFIG);
+            // 设置RecordAccumulator缓存的大小，对应的参数为buffer.memory，默认为32M
             this.totalMemorySize = config.getLong(ProducerConfig.BUFFER_MEMORY_CONFIG);
+            // 设置消息压缩类型 默认为none，不对消息进行压缩，kafka支持gzip，snappy，lz4,zstd压缩算法
             this.compressionType = CompressionType.forName(config.getString(ProducerConfig.COMPRESSION_TYPE_CONFIG));
 
+            // 设置最大的阻塞时长，对应参数为max.block.ms，默认为60秒，该参数控制KafkaProducer.send()和KafkaProducer.partitionsFor()方法最长能阻塞多长时间
             this.maxBlockTimeMs = config.getLong(ProducerConfig.MAX_BLOCK_MS_CONFIG);
             this.transactionManager = configureTransactionState(config, logContext, log);
             int deliveryTimeoutMs = configureDeliveryTimeout(config, log);

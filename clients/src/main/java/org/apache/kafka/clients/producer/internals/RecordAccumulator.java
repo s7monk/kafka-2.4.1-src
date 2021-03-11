@@ -63,6 +63,14 @@ import org.slf4j.Logger;
  * <p>
  * The accumulator uses a bounded amount of memory and append calls will block when that memory is exhausted, unless
  * this behavior is explicitly disabled.
+ *
+ * 该类主要充当一个队列用来缓存消息以便使Sender线程可以批量地向kafka服务端发送消息，从而减小网络传输的资源消耗以提升性能
+ *
+ * RecordAccumulator缓存大小可以通过kafka生产者客户端的buffer.memory参数配置，默认为32M
+ *
+ * 如果生产者向RecordAccumulator缓存中发送消息的速度远大于Sender线程从RecordAccumulator中取消息的速度，则会导致buffer.memory参数设置大小的缓存空间不足
+ * （32M的缓存用完），这时KafkaProducer的send()方法调用要么被阻塞，要么抛出异常，这取决于max.block.ms设置的值，默认为60000ms,如果KafkaProducer的send()方法
+ * 阻塞60秒后，RecordAccumulator缓存的大小还不足的话就会抛出异常
  */
 public final class RecordAccumulator {
 
