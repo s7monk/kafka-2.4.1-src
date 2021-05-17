@@ -25,10 +25,14 @@ public class Node {
 
     private static final Node NO_NODE = new Node(-1, "", -1);
 
+    // 每个节点的id
     private final int id;
     private final String idString;
+    // 节点的主机名
     private final String host;
+    // 节点的端口
     private final int port;
+    // 节点所在的机架
     private final String rack;
 
     // Cache hashCode as it is called in performance sensitive parts of the code (e.g. RecordAccumulator.ready)

@@ -36,6 +36,7 @@ public class ProducerMetadata extends Metadata {
     static final long TOPIC_EXPIRY_MS = 5 * 60 * 1000;
 
     /* Topics with expiry time */
+    // topic的过期时间
     private final Map<String, Long> topics = new HashMap<>();
     private final Logger log;
     private final Time time;
@@ -90,9 +91,13 @@ public class ProducerMetadata extends Metadata {
 
     /**
      * Wait for metadata update until the current version is larger than the last version we know of
+     *
+     * 等待元数据更新，直到当前的更新版本版本大于上次更新的版本
      */
     public synchronized void awaitUpdate(final int lastVersion, final long timeoutMs) throws InterruptedException {
+        // 当前时间
         long currentTimeMs = time.milliseconds();
+        // 执行结束时间，当前时间+剩余时间<0,则结束时间为LONG的最大值，否则等于当前时间+剩余时间
         long deadlineMs = currentTimeMs + timeoutMs < 0 ? Long.MAX_VALUE : currentTimeMs + timeoutMs;
         time.waitObject(this, () -> {
             // Throw fatal exceptions, if there are any. Recoverable topic errors will be handled by the caller.

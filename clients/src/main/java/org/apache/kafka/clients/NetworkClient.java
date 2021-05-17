@@ -443,12 +443,15 @@ public class NetworkClient implements KafkaClient {
 
     // package-private for testing
     void sendInternalMetadataRequest(MetadataRequest.Builder builder, String nodeConnectionId, long now) {
+        // 封装获取元数据的客户端请求
         ClientRequest clientRequest = newClientRequest(nodeConnectionId, builder, now, true);
+        // 发送该请求
         doSend(clientRequest, true, now);
     }
 
     private void doSend(ClientRequest clientRequest, boolean isInternalRequest, long now) {
         ensureActive();
+        // 获取请求要发送的目的主机id
         String nodeId = clientRequest.destination();
         if (!isInternalRequest) {
             // If this request came from outside the NetworkClient, validate
@@ -508,7 +511,9 @@ public class NetworkClient implements KafkaClient {
                         header.apiVersion(), clientRequest.apiKey(), request, clientRequest.correlationId(), destination);
             }
         }
+        // 封装send对象，该对象封装了目的主机和header生成的ByteBuffer对象
         Send send = request.toSend(destination, header);
+        // 基于clientRequest构建inFlightRequest对象
         InFlightRequest inFlightRequest = new InFlightRequest(
                 clientRequest,
                 header,
@@ -516,7 +521,9 @@ public class NetworkClient implements KafkaClient {
                 request,
                 send,
                 now);
+        // 添加请求到inFlightRequests中
         this.inFlightRequests.add(inFlightRequest);
+        // 把send请求加入队列等随后的poll方法把它发送出去
         selector.send(send);
     }
 
@@ -528,6 +535,7 @@ public class NetworkClient implements KafkaClient {
      *                metadata timeout
      * @param now The current time in milliseconds
      * @return The list of responses received
+     * 真正发送socket读写请求
      */
     @Override
     public List<ClientResponse> poll(long timeout, long now) {
@@ -542,8 +550,10 @@ public class NetworkClient implements KafkaClient {
             return responses;
         }
 
+        // 封装拉取元数据的请求
         long metadataTimeout = metadataUpdater.maybeUpdate(now);
         try {
+            // 发送请求
             this.selector.poll(Utils.min(timeout, metadataTimeout, defaultRequestTimeoutMs));
         } catch (IOException e) {
             log.error("Unexpected error during I/O", e);
@@ -553,6 +563,7 @@ public class NetworkClient implements KafkaClient {
         long updatedNow = this.time.milliseconds();
         List<ClientResponse> responses = new ArrayList<>();
         handleCompletedSends(responses, updatedNow);
+        // 处理接收到的响应
         handleCompletedReceives(responses, updatedNow);
         handleDisconnections(responses, updatedNow);
         handleConnections();
@@ -828,20 +839,30 @@ public class NetworkClient implements KafkaClient {
      */
     private void handleCompletedReceives(List<ClientResponse> responses, long now) {
         for (NetworkReceive receive : this.selector.completedReceives()) {
+            // 获取响应的节点id
             String source = receive.source();
+            // 从inFlightRequests中获取缓存的request对象
             InFlightRequest req = inFlightRequests.completeNext(source);
+            // 解析响应信息，封装成Struct对象
             Struct responseStruct = parseStructMaybeUpdateThrottleTimeMetrics(receive.payload(), req.header,
                 throttleTimeSensor, now);
+
             if (log.isTraceEnabled()) {
                 log.trace("Completed receive from node {} for {} with correlation id {}, received {}", req.destination,
                     req.header.apiKey(), req.header.correlationId(), responseStruct);
             }
+
             // If the received response includes a throttle delay, throttle the connection.
+            // 生成响应体
             AbstractResponse body = AbstractResponse.
                     parseResponse(req.header.apiKey(), responseStruct, req.header.apiVersion());
             maybeThrottle(body, req.header.apiVersion(), req.destination, now);
+
+            // 如果是元数据请求的响应
             if (req.isInternalRequest && body instanceof MetadataResponse)
+                // 处理元数据的更新响应信息
                 metadataUpdater.handleSuccessfulResponse(req.header, now, (MetadataResponse) body);
+            // 如果是api版本的响应
             else if (req.isInternalRequest && body instanceof ApiVersionsResponse)
                 handleApiVersionsResponse(responses, req, now, (ApiVersionsResponse) body);
             else
@@ -1096,12 +1117,15 @@ public class NetworkClient implements KafkaClient {
          * Add a metadata request to the list of sends if we can make one
          */
         private long maybeUpdate(long now, Node node) {
+            // 获取该请求要发送的目标主机
             String nodeConnectionId = node.idString();
 
+            // 判断网络连接是否已经建立好
             if (canSendRequest(nodeConnectionId, now)) {
                 Metadata.MetadataRequestAndVersion requestAndVersion = metadata.newMetadataRequestAndVersion();
                 MetadataRequest.Builder metadataRequest = requestAndVersion.requestBuilder;
                 log.debug("Sending metadata request {} to node {}", metadataRequest, node);
+                // 发送获取元数据请求
                 sendInternalMetadataRequest(metadataRequest, nodeConnectionId, now);
                 this.inProgressRequestVersion = requestAndVersion.requestVersion;
                 return defaultRequestTimeoutMs;

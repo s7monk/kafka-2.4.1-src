@@ -32,19 +32,31 @@ import java.util.Set;
 /**
  * An immutable representation of a subset of the nodes, topics, and partitions in the Kafka cluster.
  */
+//封装kafka集群的元数据信息
 public final class Cluster {
 
     private final boolean isBootstrapConfigured;
+    // kafka进群节点列表
     private final List<Node> nodes;
+    // 未授权的topic列表
     private final Set<String> unauthorizedTopics;
+    // 无效的topic列表
     private final Set<String> invalidTopics;
+    // 内置的topic列表
     private final Set<String> internalTopics;
+    // kafka集群控制器节点
     private final Node controller;
+    // 存放每个topic分区的详细信息
     private final Map<TopicPartition, PartitionInfo> partitionsByTopicPartition;
+    // topic与分区对应关系，存放每个topic有哪些分区，key为topic，value为该topic对应的分区
     private final Map<String, List<PartitionInfo>> partitionsByTopic;
+    // topic与可用分区的对应关系，key为topic，value为该topic所拥有的分区
     private final Map<String, List<PartitionInfo>> availablePartitionsByTopic;
+    // kafka集群节点与分区的对应关系，key为brokerId,value为该节点上所分配的分区
     private final Map<Integer, List<PartitionInfo>> partitionsByNode;
+    // brokerId与接单的对应关系，key为brokerId,value为该brokerId所在的集群节点
     private final Map<Integer, Node> nodesById;
+    // kafka集群资源，实际是kafka集群的id信息
     private final ClusterResource clusterResource;
 
     /**

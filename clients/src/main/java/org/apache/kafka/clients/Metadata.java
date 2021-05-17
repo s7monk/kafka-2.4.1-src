@@ -61,17 +61,25 @@ import java.util.function.Supplier;
  */
 public class Metadata implements Closeable {
     private final Logger log;
+    // 更新元数据失败重试请求的最小时间间隔，默认为100ms,目的减小网络压力
     private final long refreshBackoffMs;
+    // 元数据过期时间，默认为5分钟，过期后自动更新
     private final long metadataExpireMs;
+    // 当前的更新版本
     private int updateVersion;  // bumped on every metadata response
+    // 当前的请求版本
     private int requestVersion; // bumped on every new topic addition
+    // 上次更新元数据的时间
     private long lastRefreshMs;
+    // 上次更新成功元数据时间，如果每次都能更新成功元数据，lastSuccessfulRefreshMs和lastRefreshMs的值是一样的
     private long lastSuccessfulRefreshMs;
     private KafkaException fatalException;
     private Set<String> invalidTopics;
     private Set<String> unauthorizedTopics;
     private MetadataCache cache = MetadataCache.empty();
+    // 用来判断是否更新元数据的标识
     private boolean needUpdate;
+    // 集群资源监听
     private final ClusterResourceListeners clusterResourceListeners;
     private boolean isClosed;
     private final Map<TopicPartition, Integer> lastSeenLeaderEpochs;
@@ -106,6 +114,8 @@ public class Metadata implements Closeable {
 
     /**
      * Get the current cluster info without blocking
+     *
+     * 获取当前的集群元数据信息
      */
     public synchronized Cluster fetch() {
         return cache.cluster();

@@ -104,8 +104,8 @@ public final class RecordAccumulator {
      *        sending. This allows time for more records to arrive. Setting a non-zero lingerMs will trade off some
      *        latency for potentially better throughput due to more batching (and hence fewer, larger requests).
      *
-     *        消息发送延时，在消息到达RecordAccumulator后，延时一定的时间再发送出去，这样可以允许更多的消息到达，从而带来更好的吞吐量，如果设置
-     *                 为0，消息到达后立即发送出去
+     *        消息发送延时，在消息到达RecordAccumulator后，延时一定的时间再发送出去，这样可以允许更多的消息到达，从而带来更好的吞吐量，
+     *                默认为0，消息到达后立即发送出去
      *
      * @param retryBackoffMs An artificial delay time to retry the produce request upon receiving an error. This avoids
      *        exhausting all retries in a short period of time.

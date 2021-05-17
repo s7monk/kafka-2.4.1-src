@@ -60,7 +60,7 @@ public final class ProducerBatch {
 
     final long createdMs;
     final TopicPartition topicPartition;
-    final ProduceRequestResult produceFuture;
+    final ProduceRequestResult produceFuture;  //发送请求结果
 
     private final List<Thunk> thunks = new ArrayList<>();
     private final MemoryRecordsBuilder recordsBuilder;
