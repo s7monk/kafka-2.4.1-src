@@ -121,6 +121,7 @@ public abstract class AbstractRecords implements Records {
      * Get an upper bound estimate on the batch size needed to hold a record with the given fields. This is only
      * an estimate because it does not take into account overhead from the compression algorithm.
      */
+    // 根据给定的参数，预估batch大小的最大上限，这里是预估，没有考虑压缩
     public static int estimateSizeInBytesUpperBound(byte magic, CompressionType compressionType, byte[] key, byte[] value, Header[] headers) {
         return estimateSizeInBytesUpperBound(magic, compressionType, Utils.wrapNullable(key), Utils.wrapNullable(value), headers);
     }

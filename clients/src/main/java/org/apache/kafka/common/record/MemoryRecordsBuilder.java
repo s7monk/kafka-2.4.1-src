@@ -37,6 +37,9 @@ import static org.apache.kafka.common.utils.Utils.wrapNullable;
  * and the builder is closed (e.g. the Producer), it's important to call `closeForRecordAppends` when the former happens.
  * This will release resources like compression buffers that can be relatively large (64 KB for LZ4).
  */
+/*
+ * 用于在内存中写入一条新的消息
+ */
 public class MemoryRecordsBuilder implements AutoCloseable {
     private static final float COMPRESSION_RATE_ESTIMATION_FACTOR = 1.05f;
     private static final DataOutputStream CLOSED_STREAM = new DataOutputStream(new OutputStream() {
@@ -66,6 +69,7 @@ public class MemoryRecordsBuilder implements AutoCloseable {
     private float estimatedCompressionRatio = 1.0F;
 
     // Used to append records, may compress data on the fly
+    // 用于添加消息，可以动态压缩数据
     private DataOutputStream appendStream;
     private boolean isTransactional;
     private long producerId;
@@ -687,7 +691,10 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      * Get an estimate of the number of bytes written (based on the estimation factor hard-coded in {@link CompressionType}.
      * @return The estimated number of bytes written
      */
+    // 预估写入的字节大小
     private int estimatedBytesWritten() {
+        // 如果没有设置压缩，返回header的字节大小 + 未压缩的消息字节大小
+        // 如果设置压缩，返回header的字节大小 + 压缩的消息字节大小预估值
         if (compressionType == CompressionType.NONE) {
             return batchHeaderSizeInBytes + uncompressedRecordsSizeInBytes;
         } else {
@@ -707,6 +714,7 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      * Check if we have room for a new record containing the given key/value pair. If no records have been
      * appended, then this returns true.
      */
+    // 检查是否有足够的空间来添加新消息
     public boolean hasRoomFor(long timestamp, byte[] key, byte[] value, Header[] headers) {
         return hasRoomFor(timestamp, wrapNullable(key), wrapNullable(value), headers);
     }
@@ -719,6 +727,7 @@ public class MemoryRecordsBuilder implements AutoCloseable {
      * accurate if compression is used. When this happens, the following append may cause dynamic buffer
      * re-allocation in the underlying byte buffer stream.
      */
+    // 检查是否有足够的空间来添加新消息
     public boolean hasRoomFor(long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers) {
         if (isFull())
             return false;
@@ -747,6 +756,8 @@ public class MemoryRecordsBuilder implements AutoCloseable {
     public boolean isFull() {
         // note that the write limit is respected only after the first record is added which ensures we can always
         // create non-empty batches (this is used to disable batching when the producer's batch size is set to 0).
+        // 只有在添加了第一条消息后，才遵守该写限制，确保始终可以创建非空批次
+        // 如果MemoryRecordsBuilder已经close，或者消息个数大于0、预估的写入消息字节大小大于当前writeLimit，返回true
         return appendStream == CLOSED_STREAM || (this.numRecords > 0 && this.writeLimit <= estimatedBytesWritten());
     }
 

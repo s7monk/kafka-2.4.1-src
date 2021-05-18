@@ -42,7 +42,7 @@ public class AbstractConfig {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
 
-    /* configs for which values have been requested, used to detect unused configs */
+        /* configs for which values have been requested, used to detect unused configs */
     private final Set<String> used;
 
     /* the original values passed in by the user */

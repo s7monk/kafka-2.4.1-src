@@ -58,6 +58,7 @@ public final class ProducerBatch {
 
     private enum FinalState { ABORTED, FAILED, SUCCEEDED }
 
+    // 创建时间
     final long createdMs;
     final TopicPartition topicPartition;
     final ProduceRequestResult produceFuture;  //发送请求结果
@@ -99,11 +100,15 @@ public final class ProducerBatch {
      *
      * @return The RecordSend corresponding to this record or null if there isn't sufficient room.
      */
+    // 将消息添加到当前的消息集中，并返回相对偏移量
     public FutureRecordMetadata tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers, Callback callback, long now) {
+        // 判断如果recordsBuilder没有空间添加消息，直接返空
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
             return null;
         } else {
+            // 添加消息，并接收返回的CRC校验
             Long checksum = this.recordsBuilder.append(timestamp, key, value, headers);
+            // 计算消息最大大小
             this.maxRecordSize = Math.max(this.maxRecordSize, AbstractRecords.estimateSizeInBytesUpperBound(magic(),
                     recordsBuilder.compressionType(), key, value, headers));
             this.lastAppendTime = now;
@@ -114,6 +119,7 @@ public final class ProducerBatch {
                                                                    Time.SYSTEM);
             // we have to keep every future returned to the users in case the batch needs to be
             // split to several new batches and resent.
+            // 将要返回给用户的FutureRecordMetadata保存下来
             thunks.add(new Thunk(callback, future));
             this.recordCount++;
             return future;
@@ -124,6 +130,7 @@ public final class ProducerBatch {
      * This method is only used by {@link #split(int)} when splitting a large batch to smaller ones.
      * @return true if the record has been successfully appended, false otherwise.
      */
+    // 用于需要将大的批次分割为小的批次发送消息的情况
     private boolean tryAppendForSplit(long timestamp, ByteBuffer key, ByteBuffer value, Header[] headers, Thunk thunk) {
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
             return false;

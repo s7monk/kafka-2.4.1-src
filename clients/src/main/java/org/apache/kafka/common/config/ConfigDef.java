@@ -81,6 +81,7 @@ public class ConfigDef {
     /**
      * A unique Java object which represents the lack of a default value.
      */
+    // 没有默认值的使用这个
     public static final Object NO_DEFAULT_VALUE = new Object();
 
     private final Map<String, ConfigKey> configKeys;

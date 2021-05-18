@@ -41,11 +41,15 @@ import static org.apache.kafka.common.config.ConfigDef.ValidString.in;
  * Configuration for the Kafka Producer. Documentation for these configurations can be found in the <a
  * href="http://kafka.apache.org/documentation.html#producerconfigs">Kafka documentation</a>
  */
+// kafka生产者配置
 public class ProducerConfig extends AbstractConfig {
 
     /*
      * NOTE: DO NOT CHANGE EITHER CONFIG STRINGS OR THEIR JAVA VARIABLE NAMES AS THESE ARE PART OF THE PUBLIC API AND
      * CHANGE WILL BREAK USER CODE.
+     *
+     * 注：不要修改以下的配置字符串,如 batch.size
+     * 也不要修改java的变量名，如 BATCH_SIZE_CONFIG
      */
 
     private static final ConfigDef CONFIG;

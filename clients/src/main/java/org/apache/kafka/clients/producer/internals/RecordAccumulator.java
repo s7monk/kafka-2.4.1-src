@@ -194,13 +194,17 @@ public final class RecordAccumulator {
      * @param abortOnNewBatch A boolean that indicates returning before a new batch is created and 
      *                        running the the partitioner's onNewBatch method before trying to append again
      */
+    /*
+     * 将消息添加到消息累加器，返回结果
+     * 返回结果包含元数据信息、batch是否已满、新的batch是否已被创建
+     */
     public RecordAppendResult append(TopicPartition tp,
                                      long timestamp,
                                      byte[] key,
                                      byte[] value,
                                      Header[] headers,
                                      Callback callback,
-                                     long maxTimeToBlock,
+                                     long maxTimeToBlock,  //获取缓存最大阻塞等待时间
                                      boolean abortOnNewBatch) throws InterruptedException {
         // We keep track of the number of appending thread to make sure we do not miss batches in
         // abortIncompleteBatches().
@@ -219,15 +223,18 @@ public final class RecordAccumulator {
             }
 
             // we don't have an in-progress record batch try to allocate a new batch
+            // 如果现在没有正在处理的batch，尝试分配新的batch
             if (abortOnNewBatch) {
                 // Return a result that will cause another call to append.
                 return new RecordAppendResult(null, false, false, true);
             }
             
             byte maxUsableMagic = apiVersions.maxUsableProduceMagic();
+            // 计算batch大小
             int size = Math.max(this.batchSize, AbstractRecords.estimateSizeInBytesUpperBound(maxUsableMagic, compression, key, value, headers));
             log.trace("Allocating a new {} byte message buffer for topic {} partition {}", size, tp.topic(), tp.partition());
             buffer = free.allocate(size, maxTimeToBlock);
+
             synchronized (dq) {
                 // Need to check if producer is closed again after grabbing the dequeue lock.
                 if (closed)
@@ -274,6 +281,7 @@ public final class RecordAccumulator {
      *  and memory records built) in one of the following cases (whichever comes first): right before send,
      *  if it is expired, or when the producer is closed.
      */
+
     private RecordAppendResult tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers,
                                          Callback callback, Deque<ProducerBatch> deque) {
         ProducerBatch last = deque.peekLast();

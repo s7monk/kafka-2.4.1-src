@@ -28,6 +28,7 @@ import java.util.Map;
 /**
  * Configurations shared by Kafka client applications: producer, consumer, connect, etc.
  */
+// kafka客户端公共配置，生产者，消费者，连接都可以用这个配置
 public class CommonClientConfigs {
     private static final Logger log = LoggerFactory.getLogger(CommonClientConfigs.class);
 
