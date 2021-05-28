@@ -100,13 +100,13 @@ public final class ProducerBatch {
      *
      * @return The RecordSend corresponding to this record or null if there isn't sufficient room.
      */
-    // 将消息添加到当前的消息集中，并返回相对偏移量
+    // 将消息添加到当前的消息集中
     public FutureRecordMetadata tryAppend(long timestamp, byte[] key, byte[] value, Header[] headers, Callback callback, long now) {
         // 判断如果recordsBuilder没有空间添加消息，直接返空
         if (!recordsBuilder.hasRoomFor(timestamp, key, value, headers)) {
             return null;
         } else {
-            // 添加消息，并接收返回的CRC校验
+            // 添加消息，并接收返回的校验和
             Long checksum = this.recordsBuilder.append(timestamp, key, value, headers);
             // 计算消息最大大小
             this.maxRecordSize = Math.max(this.maxRecordSize, AbstractRecords.estimateSizeInBytesUpperBound(magic(),
