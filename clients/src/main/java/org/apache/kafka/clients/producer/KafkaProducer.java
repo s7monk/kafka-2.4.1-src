@@ -337,7 +337,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
             this.producerConfig = config;
             this.time = time;
 
-            //定义事务ID，如果用户在生产者短设置了事务id，就取用户设置的事务ID，如果用户没有设置，这里定义为null
+            //定义事务ID，如果用户在生产者端设置了事务id，就取用户设置的事务ID，如果用户没有设置，这里定义为null
             //kafka在0.11版之后支持事务
             String transactionalId = userProvidedConfigs.containsKey(ProducerConfig.TRANSACTIONAL_ID_CONFIG) ?
                     (String) userProvidedConfigs.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG) : null;
@@ -943,6 +943,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
     /**
      * Implementation of asynchronously send a record to a topic.
      */
+    // 发送消息到topic
     private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
         TopicPartition tp = null;
         try {

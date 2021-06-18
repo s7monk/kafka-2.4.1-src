@@ -75,7 +75,7 @@ import org.slf4j.Logger;
 public final class RecordAccumulator {
 
     private final Logger log;
-    private volatile boolean closed;
+    private volatile boolean closed;  // producer是否关闭
     private final AtomicInteger flushesInProgress;
     private final AtomicInteger appendsInProgress;
     private final int batchSize;
@@ -87,7 +87,7 @@ public final class RecordAccumulator {
     private final Time time;
     private final ApiVersions apiVersions;
     private final ConcurrentMap<TopicPartition, Deque<ProducerBatch>> batches;
-    private final IncompleteBatches incomplete;
+    private final IncompleteBatches incomplete; //未完成的batch
     // The following variables are only accessed by the sender thread, so we don't need to protect them.
     private final Map<TopicPartition, Long> muted;
     private int drainIndex;
@@ -328,6 +328,7 @@ public final class RecordAccumulator {
     /**
      * Get a list of batches which have been sitting in the accumulator too long and need to be expired.
      */
+    // 获取在累加器中放置时间过长且需要过期的batch
     public List<ProducerBatch> expiredBatches(long now) {
         List<ProducerBatch> expiredBatches = new ArrayList<>();
         for (Map.Entry<TopicPartition, Deque<ProducerBatch>> entry : this.batches.entrySet()) {
