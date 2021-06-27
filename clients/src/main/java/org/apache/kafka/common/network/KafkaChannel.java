@@ -113,7 +113,9 @@ public class KafkaChannel implements AutoCloseable {
     }
 
     private final String id;
+    // 封装了java nio 的SocketCannel
     private final TransportLayer transportLayer;
+    // kafka安全机制认证
     private final Supplier<Authenticator> authenticatorCreator;
     private Authenticator authenticator;
     // Tracks accumulated network thread time. This is updated on the network thread.
@@ -209,6 +211,7 @@ public class KafkaChannel implements AutoCloseable {
     public boolean finishConnect() throws IOException {
         //we need to grab remoteAddr before finishConnect() is called otherwise
         //it becomes inaccessible if the connection was refused.
+        // 获取封装了的socketChannel
         SocketChannel socketChannel = transportLayer.socketChannel();
         if (socketChannel != null) {
             remoteAddress = socketChannel.getRemoteAddress();

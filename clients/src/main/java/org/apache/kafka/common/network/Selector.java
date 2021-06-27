@@ -102,18 +102,27 @@ public class Selector implements Selectable, AutoCloseable {
     }
 
     private final Logger log;
+    // java nio selector
     private final java.nio.channels.Selector nioSelector;
+    // brokerId与KafkaChannel的映射关系
     private final Map<String, KafkaChannel> channels;
     private final Set<KafkaChannel> explicitlyMutedChannels;
     private boolean outOfMemory;
+    // 已发送完成的请求
     private final List<Send> completedSends;
+    // 已接收完成的响应
     private final List<NetworkReceive> completedReceives;
+    // 已经接收完成还没处理完的响应，一个KafkaChannel对应一个队列，一个对接对应一个连接，一个连接又有多个响应
     private final Map<KafkaChannel, Deque<NetworkReceive>> stagedReceives;
+    // 在调用SocketCannel#connect方法时立即完成的SelectionKey
     private final Set<SelectionKey> immediatelyConnectedKeys;
     private final Map<String, KafkaChannel> closingChannels;
     private Set<SelectionKey> keysWithBufferedRead;
+    // 已断开连接的节点
     private final Map<String, ChannelState> disconnected;
+    // 新连接成功的节点
     private final List<String> connected;
+    // 发送失败的节点
     private final List<String> failedSends;
     private final Time time;
     private final SelectorMetrics sensors;
@@ -256,12 +265,14 @@ public class Selector implements Selectable, AutoCloseable {
         try {
             configureSocketChannel(socketChannel, sendBufferSize, receiveBufferSize);
             boolean connected = doConnect(socketChannel, address);
+            // socketChannel向nioSelector注册一个OP_CONNECT连接事件
             key = registerChannel(id, socketChannel, SelectionKey.OP_CONNECT);
 
             if (connected) {
                 // OP_CONNECT won't trigger for immediately connected channels
                 log.debug("Immediately connected to node {}", id);
                 immediatelyConnectedKeys.add(key);
+                // 取消前面注册的 OP_CONNECT事件
                 key.interestOps(0);
             }
         } catch (IOException | RuntimeException e) {
@@ -464,6 +475,7 @@ public class Selector implements Selectable, AutoCloseable {
 
         /* check ready keys */
         long startSelect = time.nanoseconds();
+        // 统计selector上有多少个事件注册了
         int numReadyKeys = select(timeout);
         long endSelect = time.nanoseconds();
         this.sensors.selectTime.record(endSelect - startSelect, time.milliseconds());

@@ -45,13 +45,17 @@ import org.apache.kafka.common.utils.Time;
 public class BufferPool {
 
     static final String WAIT_TIME_SENSOR_NAME = "bufferpool-wait-time";
-
+    // 总内存大小
     private final long totalMemory;
+    // poolableSize就是一个batch的大，默认16KB
     private final int poolableSize;
     private final ReentrantLock lock;
+    //可分配的内存对列
     private final Deque<ByteBuffer> free;
+    //等待申请内存的线程对列
     private final Deque<Condition> waiters;
     /** Total available memory is the sum of nonPooledAvailableMemory and the number of byte buffers in free * poolableSize.  */
+    // 非内存池中可用的内存 = totalMemory - free.freeSize * poolableSize
     private long nonPooledAvailableMemory;
     private final Metrics metrics;
     private final Time time;
@@ -115,19 +119,23 @@ public class BufferPool {
 
         try {
             // check if we have a free buffer of the right size pooled
+            // poolableSize就是一个batch的大，默认16KB
+            // 代码第一次进来，内存池中没有内存，也就是free（Deque<ByteBuffer> free）这个内存队里为空，这里是获取不到内存的
             if (size == poolableSize && !this.free.isEmpty())
                 return this.free.pollFirst();
 
             // now check if the request is immediately satisfiable with the
             // memory on hand or if we need to block
+            // 内存池大小=内存块的个数 * 批次大小
             int freeListSize = freeSize() * this.poolableSize;
             if (this.nonPooledAvailableMemory + freeListSize >= size) {
                 // we have enough unallocated or pooled memory to immediately
                 // satisfy the request, but need to allocate the buffer
                 freeUp(size);
                 this.nonPooledAvailableMemory -= size;
-            } else {
+            } else { // 此种情况：totalMemory 小于xu要申请的内存大小
                 // we are out of memory and will have to block
+                // 已经分配的内存大小
                 int accumulated = 0;
                 Condition moreMemory = this.lock.newCondition();
                 try {
@@ -135,11 +143,13 @@ public class BufferPool {
                     this.waiters.addLast(moreMemory);
                     // loop over and over until we have a buffer or have reserved
                     // enough memory to allocate one
+                    // 一直循环等待其他线程释放内存，直到达到需要申请的内存大小
                     while (accumulated < size) {
                         long startWaitNs = time.nanoseconds();
                         long timeNs;
                         boolean waitingTimeElapsed;
                         try {
+                            // 这里阻塞等待其他线程释放内存，其他线程释放可分配的内存时唤醒该阻塞线程
                             waitingTimeElapsed = !moreMemory.await(remainingTimeToBlockNs, TimeUnit.NANOSECONDS);
                         } finally {
                             long endWaitNs = time.nanoseconds();
@@ -166,6 +176,7 @@ public class BufferPool {
                             // we'll need to allocate memory, but we may only get
                             // part of what we need on this iteration
                             freeUp(size - accumulated);
+                            // 可以分配的内存
                             int got = (int) Math.min(size - accumulated, this.nonPooledAvailableMemory);
                             this.nonPooledAvailableMemory -= got;
                             accumulated += got;

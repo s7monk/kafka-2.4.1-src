@@ -478,7 +478,13 @@ public final class RecordAccumulator {
         long nextReadyCheckDelayMs = Long.MAX_VALUE;
         Set<String> unknownLeaderTopics = new HashSet<>();
 
+        /*
+         * waiters队列不为空，说明内存池的内存不够用
+         * exhausted记录是否有其他线程在等待释放内存，如果exhausted为true，说明内存池中的内存不够用了
+         * exhausted会作为一个是否将该批次发送出去的条件
+         */
         boolean exhausted = this.free.queued() > 0;
+        // 遍历所有分区，一个分区对应一个队列
         for (Map.Entry<TopicPartition, Deque<ProducerBatch>> entry : this.batches.entrySet()) {
             Deque<ProducerBatch> deque = entry.getValue();
             synchronized (deque) {
@@ -487,21 +493,30 @@ public final class RecordAccumulator {
                 ProducerBatch batch = deque.peekFirst();
                 if (batch != null) {
                     TopicPartition part = entry.getKey();
+                    // 根据分区获取该分区的leader partition对应的主机
                     Node leader = cluster.leaderFor(part);
                     if (leader == null) {
                         // This is a partition for which leader is not known, but messages are available to send.
                         // Note that entries are currently not removed from batches when deque is empty.
                         unknownLeaderTopics.add(part.topic());
                     } else if (!readyNodes.contains(leader) && !isMuted(part, nowMs)) {
+                        // 该批次已经等了多久
                         long waitedTimeMs = batch.waitedTimeMs(nowMs);
+                        // 是否允许重试的标识
                         boolean backingOff = batch.attempts() > 0 && waitedTimeMs < retryBackoffMs;
+                        // 还需要等待多久发送出去，如果重试允许为true,则等待重试的时间间隔，否则等待lingerMs时间
                         long timeToWaitMs = backingOff ? retryBackoffMs : lingerMs;
+                        // 是否有写满的批次 至少两个批次或有一个批次写满
                         boolean full = deque.size() > 1 || batch.isFull();
+                        // 是否达到最大等待时间
+                        // closed || flushInProgress() 客户端线程关闭，需要发送出去
                         boolean expired = waitedTimeMs >= timeToWaitMs;
                         boolean sendable = full || expired || exhausted || closed || flushInProgress();
+                        // 满足发送条件并且没有设置重试
                         if (sendable && !backingOff) {
                             readyNodes.add(leader);
                         } else {
+                            // 计算还能等待的时间
                             long timeLeftMs = Math.max(timeToWaitMs - waitedTimeMs, 0);
                             // Note that this results in a conservative estimate since an un-sendable partition may have
                             // a leader that will later be found to have sendable data. However, this is good enough
